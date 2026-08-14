@@ -1,12 +1,20 @@
 import express from 'express';
 import YahooFinance from 'yahoo-finance2';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const publicDir = path.join(__dirname, 'public');
 const yf = new YahooFinance({ fetchOptions: { signal: AbortSignal.timeout(15000) } });
 
 app.use(express.json({limit:'1mb'}));
-app.use(express.static('public'));
+app.use(express.static(publicDir));
+
+// Explicit homepage route so Vercel never falls through to 'Cannot GET /'.
+app.get('/', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
 
 const n=(v,d=null)=>typeof v==='number'&&Number.isFinite(v)?v:d;
 const val=o=>o&&typeof o==='object'&&'raw' in o?o.raw:o;
@@ -73,4 +81,9 @@ async function analyze(input){
 
 app.get('/api/health',(req,res)=>res.json({ok:true,time:new Date().toISOString(),provider:'Yahoo Finance via yahoo-finance2'}));
 app.get('/api/analyze',async(req,res)=>{try{if(!req.query.symbol)return res.status(400).json({error:'symbol required'});res.json(await analyze(req.query.symbol));}catch(e){console.error(e);res.status(502).json({error:'Live market data unavailable',detail:String(e?.message||e)})}});
-app.listen(PORT,()=>console.log(`Compounder DNA LIVE running at http://localhost:${PORT}`));
+// Export the Express app for Vercel. Only start a local listener outside Vercel.
+export default app;
+
+if (!process.env.VERCEL) {
+  app.listen(PORT,()=>console.log(`Compounder DNA LIVE running at http://localhost:${PORT}`));
+}
