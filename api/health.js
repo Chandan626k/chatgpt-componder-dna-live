@@ -1,0 +1,1 @@
+export default async function handler(req,res){res.setHeader('Access-Control-Allow-Origin',process.env.ALLOWED_ORIGIN||'*');if(req.method==='OPTIONS')return res.status(204).end();return res.status(200).json({ok:true,openai:{configured:Boolean(process.env.OPENAI_API_KEY)},timestamp:new Date().toISOString()});}

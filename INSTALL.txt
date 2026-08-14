@@ -1,0 +1,28 @@
+COMPOUNDER DNA AUTO MODE UPGRADE
+
+FRONTEND:
+1. Open your existing compounder-dna-engine-10.html.
+2. Put auto-mode-upgrade.js in the same project.
+3. Add this immediately before </body>:
+   <script src="auto-mode-upgrade.js"></script>
+4. Push to GitHub Desktop -> Push origin.
+5. Vercel will redeploy.
+
+BACKEND:
+If your current api/data.js already supports chart/summary/news, keep it.
+If it does NOT support the scan endpoint, replace api/data.js with
+api-data-with-scan.js (rename it to data.js).
+
+WHAT THIS ADDS:
+- Partial stock name/symbol autocomplete.
+- DNA Auto Mode toggle (ON by default).
+- Swing tab: AUTO SCAN TODAY.
+- Scans a predefined liquid NSE universe.
+- Ranks swing setups using trend, RSI, SMA20/50/200, support/resistance,
+  breakout and risk/reward.
+- Gives BUY SETUP / WATCH / AVOID / NO TRADE.
+- Radar AUTO SCAN fills the universe automatically.
+
+IMPORTANT:
+This is a technical screening engine, not a guaranteed prediction engine.
+If no setup passes the filters it explicitly says NO TRADE TODAY.
