@@ -562,7 +562,7 @@ function drawChart(){
   ctx.beginPath();a.forEach((v,i)=>i?ctx.lineTo(X(i),Y(v)):ctx.moveTo(X(i),Y(v)));ctx.strokeStyle="#00e5ff";ctx.lineWidth=2;ctx.stroke();
 }
 
-async function analyse(raw){
+$("#analyse").addEventListener("click",()=>analyse($("#symbol").value)); async function analyse(raw){
   const input=String(raw||"").trim(); if(!input)return;
   $("load").classList.add("show"); $("empty").classList.add("hidden"); $("result").classList.add("hidden");
   try{
