@@ -154,16 +154,16 @@ canvas{display:block;width:100%;background:#07111d;border:1px solid var(--line);
 
     <div class="inputRow">
       <input id="symbol" class="input" placeholder="Enter stock: TITAN, INFY, TCS, HDFCBANK..." autocomplete="off">
-      <button id="analyse" class="btn">ANALYSE STOCK →</button>
+      <button id="analyse" class="btn" type="button" onclick="analyze(document.getElementById('symbol')?.value || '')">ANALYSE STOCK →</button>
     </div>
 
     <div class="quick">
-      <button class="chip" data-q="TITAN">TITAN</button>
-      <button class="chip" data-q="INFY">INFY</button>
-      <button class="chip" data-q="TCS">TCS</button>
-      <button class="chip" data-q="HDFCBANK">HDFCBANK</button>
-      <button class="chip" data-q="BAJFINANCE">BAJFINANCE</button>
-      <button class="chip" data-q="ASIANPNT">ASIANPNT</button>
+      <button class="chip" data-q="TITAN" type="button" onclick="analyze('TITAN')">TITAN</button>
+      <button class="chip" data-q="INFY" type="button" onclick="analyze('INFY')">INFY</button>
+      <button class="chip" data-q="TCS" type="button" onclick="analyze('TCS')">TCS</button>
+      <button class="chip" data-q="HDFCBANK" type="button" onclick="analyze('HDFCBANK')">HDFCBANK</button>
+      <button class="chip" data-q="BAJFINANCE" type="button" onclick="analyze('BAJFINANCE')">BAJFINANCE</button>
+      <button class="chip" data-q="ASIANPNT" type="button" onclick="analyze('ASIANPNT')">ASIANPNT</button>
     </div>
 
     <div class="demoNote">
@@ -590,11 +590,12 @@ async function analyze(raw){
     $("#result").classList.remove("hidden");
     window.scrollTo({top:0,behavior:"smooth"});
   }catch(e){
-    $("#empty").innerHTML=`<div class="alert amber"><b>Live analysis failed.</b><br>${esc(e?.message||"Backend unavailable")}</div>`;
-    $("#empty").classList.remove("hidden");
-    $("#result").classList.add("hidden");
-    $("#liveStatus").textContent="⚠ LIVE DATA ERROR • Check the backend console";
-    $("#liveStatus").className="liveStatus err";
+    const msg=esc(e?.message||"Backend unavailable");
+    $("empty").innerHTML=`<div style="text-align:center;padding:35px 10px"><div style="font-size:36px">⚠️</div><h2 style="margin:10px 0 6px">Live analysis failed</h2><div class="alert amber" style="margin-top:12px;text-align:left"><b>Backend response:</b><br>${msg}</div><div class="sub" style="margin-top:10px">The frontend is working. This message is the real API error.</div></div>`;
+    $("empty").classList.remove("hidden");
+    $("result").classList.add("hidden");
+    $("liveStatus").textContent="⚠ LIVE DATA ERROR • "+(e?.message||"Backend unavailable");
+    $("liveStatus").className="liveStatus err";
     console.error("Analysis error:",e);
   }finally{
     $("#load").classList.remove("show");
@@ -613,10 +614,18 @@ function setupNavigation(){
 }
 
 function setupCoreEvents(){
-  $("analyse")?.addEventListener("click",()=>analyze($("symbol")?.value||""));
-  document.querySelectorAll("[data-q]").forEach(btn=>btn.addEventListener("click",()=>{
-    const input=$("symbol"); if(input){input.value=btn.dataset.q; analyze(btn.dataset.q);}
-  }));
+  const analyseBtn=$("analyse");
+  if(analyseBtn && !analyseBtn.dataset.bound){
+    analyseBtn.dataset.bound="1";
+    analyseBtn.addEventListener("click",()=>analyze($("symbol")?.value||""));
+  }
+  document.querySelectorAll("[data-q]").forEach(btn=>{
+    if(btn.dataset.bound) return;
+    btn.dataset.bound="1";
+    btn.addEventListener("click",()=>{
+      const input=$("symbol"); if(input){input.value=btn.dataset.q; analyze(btn.dataset.q);}
+    });
+  });
 }
 
 if(document.readyState==='loading'){
