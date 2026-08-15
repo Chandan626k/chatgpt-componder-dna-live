@@ -1,0 +1,32 @@
+COMPOUNDER DNA LIVE - CORRECTED BUILD
+
+This build fixes the live-analysis flow and the errors found in the previous version.
+
+MAIN FIXES
+1. Removed the shared AbortSignal timeout problem from Yahoo Finance.
+2. Removed Promise.all() failure behavior that allowed one slow NIFTY request to break the whole analysis.
+3. NIFTY (^NSEI) is now optional; stock analysis continues if market-index data is unavailable.
+4. Added retry + per-operation timeout handling for Yahoo requests.
+5. Fixed duplicate ANALYSE button event handling in the frontend. The old version could send multiple API requests for one click.
+6. Removed the silent demo fallback from the main live-analysis error path; real backend errors are now shown.
+7. Fixed missing 52-week high/low fields in live data.
+8. Fixed missing/null number rendering so one missing Yahoo metric does not crash the page.
+9. Fixed Radar VIEW button calling an undefined function.
+10. Fixed Vercel GET /api/analyze compatibility while preserving the existing POST AI endpoint.
+11. Cleaned the corrupted UTF-8/mojibake text in the frontend.
+
+START LOCALLY
+
+1. Open PowerShell in this project folder.
+2. Run:
+   npm install
+3. Run:
+   npm start
+4. Open:
+   http://localhost:3000
+5. Enter TCS and click ANALYSE STOCK.
+
+IMPORTANT
+- Keep the terminal running while using the website.
+- Yahoo Finance is an external data source. If Yahoo itself is temporarily unavailable or rate-limits the request, the website will show the actual backend error instead of pretending the data is live.
+- Do not manually paste JavaScript into PowerShell. JavaScript belongs in the project files.

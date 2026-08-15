@@ -142,7 +142,7 @@ canvas{display:block;width:100%;background:#07111d;border:1px solid var(--line);
     <button data-tab="news">NEWS</button>
     <button data-tab="swing">SWING</button>
   </nav>
-<div id="liveStatus" class="liveStatus">● DEMO MODE — start the backend for LIVE DATA</div></header>
+<div id="liveStatus" class="liveStatus">● LIVE BACKEND • Start the server to load market data</div></header>
 
 <main>
 
@@ -167,8 +167,7 @@ canvas{display:block;width:100%;background:#07111d;border:1px solid var(--line);
     </div>
 
     <div class="demoNote">
-      FRONTEND TEST MODE: All buttons, tabs, scoring, charts, cross-checks and portfolio controls work locally.
-      Real market/API connection will be connected separately after the frontend is finalized.
+      LIVE MODE: Analysis uses the local backend and Yahoo Finance data. If live data fails, the page shows the actual backend error instead of silently replacing it with demo numbers.
     </div>
   </div>
 
@@ -328,7 +327,8 @@ BAJFINANCE:{name:"Bajaj Finance Ltd",sector:"Financial Services",price:9800,pe:3
 ASIANPNT:{name:"Asian Paints Ltd",sector:"Consumer Discretionary",price:2440,pe:52.5,fpe:47.0,pb:13.5,roe:24.8,roa:13.9,de:.18,npm:10.2,opm:14.0,rg:2.8,eg:-4.1,revenue:35000,profit:3600,debt:2800,cash:1700,fcf:2200,div:.95,payout:49,high:3423,low:2120,trend:"DOWNTREND",rsi:39}
 };
 
-let state={stock:null,sc:null,prices:[],tech:null};
+let state={stock:null,sc:null,prices:[],tech:null,live:false};
+const num=(v,d=1)=>Number.isFinite(Number(v))?Number(v).toFixed(d):"N/A";
 
 const $=id=>document.getElementById(id);
 const clamp=n=>Math.max(0,Math.min(100,Math.round(n)));
@@ -411,7 +411,7 @@ function metricRows(d){
     ["Free Cash Flow",d.fcf==null?"N/A":"₹"+d.fcf.toLocaleString("en-IN")+" Cr","Owner-earnings proxy","CASH FLOW"],
     ["Dividend Yield",d.div==null?"N/A":d.div.toFixed(2)+"%","Cash distribution","CAPITAL"],
     ["Payout Ratio",d.payout==null?"N/A":d.payout.toFixed(0)+"%","Profit distributed","CAPITAL"],
-    ["52W Range","₹"+d.low.toLocaleString("en-IN")+" — ₹"+d.high.toLocaleString("en-IN"),"Price context","TECHNICAL"]
+    ["52W Range",(d.low==null||d.high==null?"N/A":"₹"+d.low.toLocaleString("en-IN")+" — ₹"+d.high.toLocaleString("en-IN")),"Price context","TECHNICAL"]
   ];
   return rows.map(r=>`<tr><td>${r[0]}</td><td><b>${r[1]}</b></td><td>${r[2]}</td><td><span class="${r[3]==="RISK"?"amber":r[3]==="VALUATION"?"violet":r[3]==="QUALITY"?"green":"cyan"}">${r[3]}</span></td></tr>`).join("");
 }
@@ -481,7 +481,7 @@ function render(){
 
   const peg=d.eg>0?d.pe/d.eg:null;
   $("valuationBody").innerHTML=`<div class="grid3">
-    <div class="card"><div class="label">P/E</div><div class="big amber">${d.pe.toFixed(1)}x</div><div class="sub">Must be compared with growth and quality.</div></div>
+    <div class="card"><div class="label">P/E</div><div class="big amber">${num(d.pe,1)}x</div><div class="sub">Must be compared with growth and quality.</div></div>
     <div class="card"><div class="label">PEG-style screen</div><div class="big violet">${peg?peg.toFixed(2):"N/A"}</div><div class="sub">P/E ÷ earnings growth; screening only.</div></div>
     <div class="card"><div class="label">Margin of Safety</div><div class="big ${d.pe<30?"green":"red"}">${d.pe<30?"BETTER":"THIN / LOW"}</div><div class="sub">Not a DCF; live valuation model comes later.</div></div>
   </div>`;
@@ -528,9 +528,9 @@ function render(){
 
   $("taBody").innerHTML=`<div class="grid4">
     <div class="card"><div class="label">Trend</div><div class="big ${t.trend.includes("UP")?"green":t.trend==="DOWNTREND"?"red":"amber"}">${t.trend}</div></div>
-    <div class="card"><div class="label">RSI 14</div><div class="big ${t.rsi>70?"amber":t.rsi<30?"cyan":"green"}">${t.rsi.toFixed(1)}</div><div class="sub">${t.rsi>70?"Overbought":t.rsi<30?"Oversold":"Neutral"}</div></div>
-    <div class="card"><div class="label">SMA 50</div><div class="big cyan">₹${t.s50.toFixed(0)}</div></div>
-    <div class="card"><div class="label">SMA 200</div><div class="big violet">₹${t.s200.toFixed(0)}</div></div>
+    <div class="card"><div class="label">RSI 14</div><div class="big ${t.rsi>70?"amber":t.rsi<30?"cyan":"green"}">${num(t.rsi,1)}</div><div class="sub">${t.rsi>70?"Overbought":t.rsi<30?"Oversold":"Neutral"}</div></div>
+    <div class="card"><div class="label">SMA 50</div><div class="big cyan">₹${num(t.s50,0)}</div></div>
+    <div class="card"><div class="label">SMA 200</div><div class="big violet">₹${num(t.s200,0)}</div></div>
   </div><div class="alert blue">Technical confirmation is secondary for a long-term compounder. For swing trades, trend + volume + risk/reward become much more important.</div>`;
   drawChart();
 
@@ -562,22 +562,74 @@ function drawChart(){
   ctx.beginPath();a.forEach((v,i)=>i?ctx.lineTo(X(i),Y(v)):ctx.moveTo(X(i),Y(v)));ctx.strokeStyle="#00e5ff";ctx.lineWidth=2;ctx.stroke();
 }
 
-$("#analyse").addEventListener("click",()=>analyse($("#symbol").value)); async function analyse(raw){
-  const input=String(raw||"").trim(); if(!input)return;
-  $("load").classList.add("show"); $("empty").classList.add("hidden"); $("result").classList.add("hidden");
+async function analyze(raw){
+  const input=String(raw||"").trim();
+  if(!input)return;
+
+  $("#load").classList.add("show");
+  $("#empty").classList.add("hidden");
+  $("#result").classList.add("hidden");
+
   try{
-    const r=await fetch("/api/analyze?symbol="+encodeURIComponent(input)); if(!r.ok)throw new Error();
-    const live=await r.json(); state.stock=live.stock; state.sc=live.score; state.tech=live.technical; state.live=true;
-    window.__lastLive=live; $("liveStatus").textContent="● LIVE DATA · "+live.source+" · "+new Date(live.asOf).toLocaleTimeString("en-IN"); $("liveStatus").className="liveStatus live";
-    render(); $("result").classList.remove("hidden"); window.scrollTo({top:0,behavior:"smooth"});
+    const r=await fetch("/api/analyze?symbol="+encodeURIComponent(input),{
+      headers:{Accept:"application/json"},
+      cache:"no-store"
+    });
+    const payload=await r.json().catch(()=>null);
+    if(!r.ok){
+      throw new Error(payload?.detail || payload?.error || `API error (${r.status})`);
+    }
+
+    const live=payload;
+
+    state.stock=live.stock;
+    state.sc=live.score;
+    state.tech=live.technical;
+    state.live=true;
+
+    window.__lastLive=live;
+
+    $("#liveStatus").textContent="● LIVE DATA • "+live.source+" • "+new Date(live.asOf).toLocaleTimeString("en-IN");
+    $("#liveStatus").className="liveStatus live";
+
+    render();
+    $("#result").classList.remove("hidden");
+    window.scrollTo({top:0,behavior:"smooth"});
   }catch(e){
-    const d=normalise(input);
-    if(!d){$("empty").innerHTML='<div class="alert amber"><b>Live data unavailable.</b><br>Start the backend and try again.</div>'; $("result").classList.add("hidden");}
-    else{state.stock=d;state.sc=score(d);state.tech=techFor(d);state.live=false;render();$("result").classList.remove("hidden");$("liveStatus").textContent="● DEMO FALLBACK · live backend not reachable";$("liveStatus").className="liveStatus err";}
-  }finally{$("load").classList.remove("show");}
+    $("#empty").innerHTML=`<div class="alert amber"><b>Live analysis failed.</b><br>${esc(e?.message||"Backend unavailable")}</div>`;
+    $("#empty").classList.remove("hidden");
+    $("#result").classList.add("hidden");
+    $("#liveStatus").textContent="⚠ LIVE DATA ERROR • Check the backend console";
+    $("#liveStatus").className="liveStatus err";
+    console.error("Analysis error:",e);
+  }finally{
+    $("#load").classList.remove("show");
+  }
 }
 
-/* ===== AUTO / EXPLANATION ENGINE ===== */
+function bindAnalyseUI(){
+  const btn=$("analyse");
+  const input=$("symbol");
+  if(!btn || !input){
+    console.error("[Compounder DNA] Analyse UI not found.");
+    return;
+  }
+  if(btn.dataset.bound==="1") return;
+  btn.dataset.bound="1";
+  btn.addEventListener("click",()=>analyze(input.value));
+  input.addEventListener("keydown",e=>{
+    if(e.key==="Enter"){
+      e.preventDefault();
+      analyze(input.value);
+    }
+  });
+  console.log("[Compounder DNA] Analyse button ready");
+}
+if(document.readyState==="loading"){
+  document.addEventListener("DOMContentLoaded",bindAnalyseUI,{once:true});
+}else{
+  bindAnalyseUI();
+}/* ===== AUTO / EXPLANATION ENGINE ===== */
 let autoTimer=null,pfAutoTimer=null,radarAutoTimer=null,swingAutoTimer=null;
 
 function decisionClass(a){a=String(a||"WAIT");return a.includes("BUY")||a.includes("ADD")?"buy":a.includes("SELL")||a.includes("AVOID")?"sell":"wait"}
@@ -595,9 +647,9 @@ function enhancedRender(){
 
   $("taBody").innerHTML=`<div class="grid4">
     <div class="card"><div class="label">Trend</div><div class="big ${t.trend.includes("UP")?"green":t.trend==="DOWNTREND"?"red":"amber"}">${t.trend}</div></div>
-    <div class="card"><div class="label">RSI 14</div><div class="big ${t.rsi>70?"amber":t.rsi<30?"red":"green"}">${t.rsi.toFixed(1)}</div><div class="sub">${tx.momentum}</div></div>
-    <div class="card"><div class="label">SMA 50</div><div class="big cyan">₹${t.s50.toFixed(0)}</div><div class="sub">${tx.b?"price above":"price below"}</div></div>
-    <div class="card"><div class="label">SMA 200</div><div class="big violet">₹${t.s200.toFixed(0)}</div><div class="sub">${tx.c?"price above":"price below"}</div></div>
+    <div class="card"><div class="label">RSI 14</div><div class="big ${t.rsi>70?"amber":t.rsi<30?"red":"green"}">${num(t.rsi,1)}</div><div class="sub">${tx.momentum}</div></div>
+    <div class="card"><div class="label">SMA 50</div><div class="big cyan">₹${num(t.s50,0)}</div><div class="sub">${tx.b?"price above":"price below"}</div></div>
+    <div class="card"><div class="label">SMA 200</div><div class="big violet">₹${num(t.s200,0)}</div><div class="sub">${tx.c?"price above":"price below"}</div></div>
   </div>
   <div class="explainBox"><div class="title">${tx.verdict}</div>
     <p><b>Trend:</b> ${tx.b&&tx.c?"Price is above medium/long-term trend references, which supports the setup.":"Trend confirmation is incomplete, so buying should not rely on price momentum alone."}</p>
@@ -726,7 +778,7 @@ async function runRadarEnhanced(){
     catch(e){const d=normalise(input);if(d){const s=score(d),t=techFor(d);out.push({stock:d,score:s,technical:t,decision:decision(s,t)});}}
   }
   out.sort((a,b)=>b.score.overall-a.score.overall);
-  $("radarTable").innerHTML=out.map((x,i)=>{const dec=x.decision||decision(x.score,x.technical),a=dec.action||dec.a,why=x.score.risk>=60?"Risk is pulling the rank down.":x.score.overall>=78?"Quality + growth support the rank.":"Mixed evidence needs monitoring.";return `<tr><td>${i+1}</td><td><b>${x.stock.symbol}</b></td><td class="cyan">${x.score.overall.toFixed(0)}</td><td>${x.score.quality.toFixed(0)}</td><td class="violet">${x.score.wealth.toFixed(0)}</td><td class="${x.score.risk>60?"red":"green"}">${x.score.risk.toFixed(0)}</td><td>${x.technical.trend}</td><td><span class="signal ${decisionClass(a)}">${a}</span><div class="why">${why}</div><button class="btn secondary" style="margin-top:6px" onclick="analyse('${x.stock.symbol}')">VIEW</button></td></tr>`}).join("");
+  $("radarTable").innerHTML=out.map((x,i)=>{const dec=x.decision||decision(x.score,x.technical),a=dec.action||dec.a,why=x.score.risk>=60?"Risk is pulling the rank down.":x.score.overall>=78?"Quality + growth support the rank.":"Mixed evidence needs monitoring.";return `<tr><td>${i+1}</td><td><b>${x.stock.symbol}</b></td><td class="cyan">${x.score.overall.toFixed(0)}</td><td>${x.score.quality.toFixed(0)}</td><td class="violet">${x.score.wealth.toFixed(0)}</td><td class="${x.score.risk>60?"red":"green"}">${x.score.risk.toFixed(0)}</td><td>${x.technical.trend}</td><td><span class="signal ${decisionClass(a)}">${a}</span><div class="why">${why}</div><button class="btn secondary" style="margin-top:6px" onclick="analyze('${x.stock.symbol}')">VIEW</button></td></tr>`}).join("");
   $("radarMsg").textContent=out.length+" stocks ranked · live refresh "+new Date().toLocaleTimeString("en-IN");
 }
 function setRadarAuto(on){
@@ -742,10 +794,10 @@ async function setSwingAuto(on){
   if(on){await tick();swingAutoTimer=setInterval(tick,60000);$("swingAutoLast").textContent="· live every 60 sec";}else $("swingAutoLast").textContent="";
 }
 /* Radar */
-$("radarRun").addEventListener("click",runRadarEnhanced);
+$("radarRun")?.addEventListener("click",runRadarEnhanced);
 
 /* News frontend behavior */
-$("newsRun").addEventListener("click",()=>{
+$("newsRun")?.addEventListener("click",()=>{
   const q=$("newsSym").value.trim();
   $("newsBody").innerHTML=`<div class="alert blue"><b>News UI is ready.</b><br>${q?`Live news for <b>${esc(q)}</b> will be connected when the news data source is added.`:"Enter a company name or symbol."}</div>`;
 });
@@ -754,10 +806,13 @@ $("newsRun").addEventListener("click",()=>{
 $("bizChecks").innerHTML=checks([["Business understandable?","Analyse a stock first."],["Durable moat?","Analyse a stock first."],["Pricing power?","Analyse a stock first."]]);
 $("earnChecks").innerHTML=checks([["Revenue → earnings consistency?","Analyse a stock first."],["Profit → cash conversion?","Analyse a stock first."],["Margins stable?","Analyse a stock first."]]);
 $("mgmtChecks").innerHTML=checks([["Promoter ownership stable?","Verify primary filings."],["Pledge low/zero?","Verify primary filings."],["Auditor clean?","Read the audit report."]]);
-$("autoToggle").addEventListener("click",()=>setAutoMode(!$("autoDot").classList.contains("on")));
-$("pfAutoToggle").addEventListener("click",()=>setPfAuto(!$("pfDot").classList.contains("on")));
-$("radarAutoToggle").addEventListener("click",()=>setRadarAuto(!$("radarDot").classList.contains("on")));
-$("swingAutoToggle").addEventListener("click",()=>setSwingAuto(!$("swingDot").classList.contains("on")));
+$("autoToggle")?.addEventListener("click",()=>setAutoMode(!$("autoDot").classList.contains("on")));
+$("pfAutoToggle")?.addEventListener("click",()=>setPfAuto(!$("pfDot").classList.contains("on")));
+$("radarAutoToggle")?.addEventListener("click",()=>setRadarAuto(!$("radarDot").classList.contains("on")));
+$("swingAutoToggle")?.addEventListener("click",()=>setSwingAuto(!$("swingDot").classList.contains("on")));
+
 </script>
 </body>
 </html>
+
+
