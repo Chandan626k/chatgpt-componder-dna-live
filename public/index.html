@@ -601,9 +601,32 @@ async function analyze(raw){
   }
 }
 
-document.addEventListener("DOMContentLoaded",()=>{
-  $("#analyse")?.addEventListener("click",()=>analyze($("#symbol").value));
-});/* ===== AUTO / EXPLANATION ENGINE ===== */
+function setupNavigation(){
+  document.querySelectorAll("[data-tab]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const target=btn.dataset.tab;
+      document.querySelectorAll(".tab").forEach(sec=>sec.classList.toggle("hidden",sec.id!==target));
+      document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("active",b===btn));
+      window.scrollTo({top:0,behavior:"smooth"});
+    });
+  });
+}
+
+function setupCoreEvents(){
+  $("analyse")?.addEventListener("click",()=>analyze($("symbol")?.value||""));
+  document.querySelectorAll("[data-q]").forEach(btn=>btn.addEventListener("click",()=>{
+    const input=$("symbol"); if(input){input.value=btn.dataset.q; analyze(btn.dataset.q);}
+  }));
+}
+
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',()=>{setupNavigation();setupCoreEvents();});
+}else{
+  setupNavigation();
+  setupCoreEvents();
+}
+
+/* ===== AUTO / EXPLANATION ENGINE ===== */
 let autoTimer=null,pfAutoTimer=null,radarAutoTimer=null,swingAutoTimer=null;
 
 function decisionClass(a){a=String(a||"WAIT");return a.includes("BUY")||a.includes("ADD")?"buy":a.includes("SELL")||a.includes("AVOID")?"sell":"wait"}
@@ -768,10 +791,10 @@ async function setSwingAuto(on){
   if(on){await tick();swingAutoTimer=setInterval(tick,60000);$("swingAutoLast").textContent="· live every 60 sec";}else $("swingAutoLast").textContent="";
 }
 /* Radar */
-$("radarRun").addEventListener("click",runRadarEnhanced);
+$("radarRun")?.addEventListener("click",runRadarEnhanced);
 
 /* News frontend behavior */
-$("newsRun").addEventListener("click",()=>{
+$("newsRun")?.addEventListener("click",()=>{
   const q=$("newsSym").value.trim();
   $("newsBody").innerHTML=`<div class="alert blue"><b>News UI is ready.</b><br>${q?`Live news for <b>${esc(q)}</b> will be connected when the news data source is added.`:"Enter a company name or symbol."}</div>`;
 });

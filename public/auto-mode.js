@@ -65,7 +65,7 @@
     try{
       const r=await fetch('/api/data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'scan',limit:15})});
       if(!r.ok) throw new Error(await r.text());
-      const raw=await r.json(); const list=(raw||[]).map(scoreRow).sort((a,b)=>b.score-a.score);
+      const payload=await r.json(); const raw=Array.isArray(payload)?payload:(payload?.data||[]); const list=raw.map(scoreRow).sort((a,b)=>b.score-a.score);
       body.innerHTML=`<div class="scanHeader"><div><h3 style="margin:0">Today's Swing Candidates</h3><div class="sub">Only screened candidates are shown. No setup can be the correct decision.</div></div><button class="smallBtn scanBtn" id="rescanSwing">RESCAN</button></div>`+
       (list.length?list.map((x,i)=>`<div class="panel" style="margin-bottom:10px;padding:13px"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b>#${i+1} ${esc(x.symbol||'')}</b><span class="badge bcyan">${x.decision}</span><span class="sub">Score ${x.score}/100</span></div><div class="scanGrid"><div class="scanMini">PRICE<br><b>₹${fmt(x.price)}</b></div><div class="scanMini">1D MOMENTUM<br><b>${fmt(x.momentumPct)}%</b></div><div class="scanMini">SMA20<br><b>₹${fmt(x.sma20)}</b></div><div class="scanMini">TREND<br><b>${esc(x.trend)}</b></div></div></div>`).join(''):'<div class="alert amber">NO TRADE TODAY — no sufficiently strong technical setup passed the scan.</div>');
       $('rescanSwing')?.addEventListener('click',swingScan);
@@ -78,7 +78,7 @@
     try{
       const r=await fetch('/api/data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'scan',limit:15})});
       if(!r.ok)throw new Error(await r.text());
-      const raw=await r.json(); const list=raw.map(scoreRow).sort((a,b)=>b.score-a.score);
+      const payload=await r.json(); const raw=Array.isArray(payload)?payload:(payload?.data||[]); const list=raw.map(scoreRow).sort((a,b)=>b.score-a.score);
       $('radarTable').innerHTML=list.map((x,i)=>`<tr><td>${i+1}</td><td><b>${esc(x.symbol)}</b></td><td class="cyan">${x.score}</td><td>—</td><td>—</td><td>${x.riskScore??'—'}</td><td>${esc(x.trend||'—')}</td><td><span class="signal ${x.decision.includes('BUY')?'buy':x.decision.includes('AVOID')?'sell':'wait'}">${x.decision}</span></td></tr>`).join('');
       msg.textContent=`${list.length} stocks ranked • ${new Date().toLocaleTimeString('en-IN')}`;
     }catch(e){msg.textContent='Radar unavailable: '+(e.message||'backend error');}
