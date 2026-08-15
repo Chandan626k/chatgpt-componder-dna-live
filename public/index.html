@@ -142,7 +142,7 @@ canvas{display:block;width:100%;background:#07111d;border:1px solid var(--line);
     <button data-tab="news">NEWS</button>
     <button data-tab="swing">SWING</button>
   </nav>
-<div id="liveStatus" class="liveStatus">● LIVE BACKEND • Start the server to load market data</div></header>
+<div id="liveStatus" class="liveStatus">● LIVE BACKEND • Checking API…</div></header>
 
 <main>
 
@@ -571,16 +571,10 @@ async function analyze(raw){
   $("#result").classList.add("hidden");
 
   try{
-    const r=await fetch("/api/analyze?symbol="+encodeURIComponent(input),{
-      headers:{Accept:"application/json"},
-      cache:"no-store"
-    });
-    const payload=await r.json().catch(()=>null);
-    if(!r.ok){
-      throw new Error(payload?.detail || payload?.error || `API error (${r.status})`);
-    }
+    const r=await fetch("/api/analyze?symbol="+encodeURIComponent(input));
+    if(!r.ok)throw new Error("API error");
 
-    const live=payload;
+    const live=await r.json();
 
     state.stock=live.stock;
     state.sc=live.score;
@@ -607,29 +601,9 @@ async function analyze(raw){
   }
 }
 
-function bindAnalyseUI(){
-  const btn=$("analyse");
-  const input=$("symbol");
-  if(!btn || !input){
-    console.error("[Compounder DNA] Analyse UI not found.");
-    return;
-  }
-  if(btn.dataset.bound==="1") return;
-  btn.dataset.bound="1";
-  btn.addEventListener("click",()=>analyze(input.value));
-  input.addEventListener("keydown",e=>{
-    if(e.key==="Enter"){
-      e.preventDefault();
-      analyze(input.value);
-    }
-  });
-  console.log("[Compounder DNA] Analyse button ready");
-}
-if(document.readyState==="loading"){
-  document.addEventListener("DOMContentLoaded",bindAnalyseUI,{once:true});
-}else{
-  bindAnalyseUI();
-}/* ===== AUTO / EXPLANATION ENGINE ===== */
+document.addEventListener("DOMContentLoaded",()=>{
+  $("#analyse")?.addEventListener("click",()=>analyze($("#symbol").value));
+});/* ===== AUTO / EXPLANATION ENGINE ===== */
 let autoTimer=null,pfAutoTimer=null,radarAutoTimer=null,swingAutoTimer=null;
 
 function decisionClass(a){a=String(a||"WAIT");return a.includes("BUY")||a.includes("ADD")?"buy":a.includes("SELL")||a.includes("AVOID")?"sell":"wait"}
@@ -794,10 +768,10 @@ async function setSwingAuto(on){
   if(on){await tick();swingAutoTimer=setInterval(tick,60000);$("swingAutoLast").textContent="· live every 60 sec";}else $("swingAutoLast").textContent="";
 }
 /* Radar */
-$("radarRun")?.addEventListener("click",runRadarEnhanced);
+$("radarRun").addEventListener("click",runRadarEnhanced);
 
 /* News frontend behavior */
-$("newsRun")?.addEventListener("click",()=>{
+$("newsRun").addEventListener("click",()=>{
   const q=$("newsSym").value.trim();
   $("newsBody").innerHTML=`<div class="alert blue"><b>News UI is ready.</b><br>${q?`Live news for <b>${esc(q)}</b> will be connected when the news data source is added.`:"Enter a company name or symbol."}</div>`;
 });
@@ -806,12 +780,13 @@ $("newsRun")?.addEventListener("click",()=>{
 $("bizChecks").innerHTML=checks([["Business understandable?","Analyse a stock first."],["Durable moat?","Analyse a stock first."],["Pricing power?","Analyse a stock first."]]);
 $("earnChecks").innerHTML=checks([["Revenue → earnings consistency?","Analyse a stock first."],["Profit → cash conversion?","Analyse a stock first."],["Margins stable?","Analyse a stock first."]]);
 $("mgmtChecks").innerHTML=checks([["Promoter ownership stable?","Verify primary filings."],["Pledge low/zero?","Verify primary filings."],["Auditor clean?","Read the audit report."]]);
-$("autoToggle")?.addEventListener("click",()=>setAutoMode(!$("autoDot").classList.contains("on")));
-$("pfAutoToggle")?.addEventListener("click",()=>setPfAuto(!$("pfDot").classList.contains("on")));
-$("radarAutoToggle")?.addEventListener("click",()=>setRadarAuto(!$("radarDot").classList.contains("on")));
-$("swingAutoToggle")?.addEventListener("click",()=>setSwingAuto(!$("swingDot").classList.contains("on")));
+$("autoToggle").addEventListener("click",()=>setAutoMode(!$("autoDot").classList.contains("on")));
+$("pfAutoToggle").addEventListener("click",()=>setPfAuto(!$("pfDot").classList.contains("on")));
+$("radarAutoToggle").addEventListener("click",()=>setRadarAuto(!$("radarDot").classList.contains("on")));
+$("swingAutoToggle").addEventListener("click",()=>setSwingAuto(!$("swingDot").classList.contains("on")));
 
 </script>
+<script src="/auto-mode.js"></script>
 </body>
 </html>
 
